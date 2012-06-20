@@ -1,3 +1,5 @@
+# My files/directories
+database.db
 venv
 *.py[co]
 *.swp

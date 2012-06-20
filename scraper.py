@@ -10,6 +10,10 @@ import sys
 import requests
 
 from bs4 import BeautifulSoup
+from sqlalchemy import create_engine, Column, Integer, String, Boolean,\
+     ForeignKey
+from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.orm import sessionmaker, relationship, backref
 
 # Global Variables
 try:
@@ -26,6 +30,46 @@ full_url = _baseurl+start
 start = start.split('/')
 
 
+# Setting up the database
+engine = create_engine('sqlite:///database.db')
+Session = sessionmaker(bind=engine)
+session = Session()
+Base = declarative_base()
+Base.metadata.create_all(engine)
+
+
+class Url(Base):
+    __tablename__ = 'urls'
+    id = Column(Integer, primary_key=True)
+    url = Column(String, unique=True)
+    visited = Column(Boolean, default=False)
+
+    def __init__(self, url, visited=False):
+        self.url = url
+        self.visited = visited
+
+
+class Pdf(Base):
+    __tablename__ = 'pdfs'
+    id = Column(Integer, primary_key=True)
+    pdf_url = Column(String, unique=True)
+
+    def __init__(self, pdf_url):
+        self.pdf_url = pdf_url
+
+
+class PdfUrls(Base):
+    __tablename__ = 'pdf_urls'
+    id = Column(Integer, primary_key=True)
+    url = Column(String)
+    pdf_id = Column(Integer, ForeignKey('pdfs.id'))
+    pdf = relationship('Pdf', backref=backref('pdf_urls', order_by=id))
+
+    def __init__(self, url):
+        self.url = url
+
+
+# Functions
 def get_pdfs(soup):
     '''Obtains a list of pdfs on a given page'''
     pdf_urls = {}
