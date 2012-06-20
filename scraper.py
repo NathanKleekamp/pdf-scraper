@@ -5,6 +5,7 @@ Scrapes exchanges for pdf files. Returns a csv file with each pdf in a given
 section and the page(s) on which they're linked.
 '''
 
+
 import re
 import sys
 import requests
@@ -14,6 +15,7 @@ from sqlalchemy import create_engine, Column, Integer, String, Boolean,\
      ForeignKey
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker, relationship, backref
+
 
 # Global Variables
 try:
@@ -30,15 +32,15 @@ full_url = _baseurl+start
 start = start.split('/')
 
 
-# Setting up the database
+# Setting up the database and database classes
 engine = create_engine('sqlite:///database.db')
 Session = sessionmaker(bind=engine)
 session = Session()
 Base = declarative_base()
-Base.metadata.create_all(engine)
 
 
 class Url(Base):
+    '''List of urls for the spider'''
     __tablename__ = 'urls'
     id = Column(Integer, primary_key=True)
     url = Column(String, unique=True)
@@ -50,6 +52,7 @@ class Url(Base):
 
 
 class Pdf(Base):
+    '''The pdf files themselves'''
     __tablename__ = 'pdfs'
     id = Column(Integer, primary_key=True)
     pdf_url = Column(String, unique=True)
@@ -59,30 +62,34 @@ class Pdf(Base):
 
 
 class PdfUrls(Base):
-    __tablename__ = 'pdf_urls'
+    '''Pages on which the pdf is found'''
+    __tablename__ = 'pdf_pages'
     id = Column(Integer, primary_key=True)
-    url = Column(String)
+    page_url = Column(String)
     pdf_id = Column(Integer, ForeignKey('pdfs.id'))
-    pdf = relationship('Pdf', backref=backref('pdf_urls', order_by=id))
+    pdf_url = relationship('Pdf', backref=backref('pdf_urls', order_by=id))
 
-    def __init__(self, url):
-        self.url = url
+    def __init__(self, page_url):
+        self.page_url = page_url
+
+
+Base.metadata.create_all(engine)
 
 
 # Functions
 def get_pdfs(soup):
     '''Obtains a list of pdfs on a given page'''
-    pdf_urls = {}
     pdf_links = soup.find_all('a', href=re.compile("\.pdf$"))
     if not pdf_links:
         print('There are no PDFs on this page.')
     else:
         unique_pdfs = set([link.get('href') for link in pdf_links])
         for pdf in unique_pdfs:
-            pdf_urls[pdf] = full_url
-        for k, v in pdf_urls.items():
-            print(k, v)
-
+            pdf = Pdf(pdf)
+            # This part isn't working correctly
+            pdf.page_url = full_url
+            session.add(pdf)
+    session.commit()
 
 def get_urls(soup):
     '''Grabs urls to pages within the same "directory/folder"'''
