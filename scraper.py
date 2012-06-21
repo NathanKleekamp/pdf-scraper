@@ -61,13 +61,13 @@ class Pdf(Base):
         self.pdf_url = pdf_url
 
 
-class PdfUrls(Base):
+class PdfUrl(Base):
     '''Pages on which the pdf is found'''
     __tablename__ = 'pdf_pages'
     id = Column(Integer, primary_key=True)
     page_url = Column(String)
     pdf_id = Column(Integer, ForeignKey('pdfs.id'))
-    pdf_url = relationship('Pdf', backref=backref('pdf_urls', order_by=id))
+    pdf_address = relationship('Pdf', backref=backref('pdf_pages', order_by=id))
 
     def __init__(self, page_url):
         self.page_url = page_url
@@ -77,39 +77,34 @@ Base.metadata.create_all(engine)
 
 
 # Functions
-def get_pdfs(soup):
-    '''Obtains a list of pdfs on a given page'''
+def get_pdfs(soup, address=None):
+    '''Obtains a list of pdfs on a given page and saves them to the db.'''
     pdf_links = soup.find_all('a', href=re.compile("\.pdf$"))
-    if not pdf_links:
-        print('There are no PDFs on this page.')
-    else:
-        unique_pdfs = set([link.get('href') for link in pdf_links])
-        for pdf in unique_pdfs:
-            pdf = Pdf(pdf)
-            # This part isn't working correctly
-            pdf.page_url = full_url
-            session.add(pdf)
+    unique_pdfs = set([link.get('href') for link in pdf_links])
+    for pdf in unique_pdfs:
+        pdf = Pdf(pdf)
+        pdf.pdf_pages = [PdfUrl(address)]
+        session.add(pdf)
     session.commit()
+
 
 def get_urls(soup):
     '''Grabs urls to pages within the same "directory/folder"'''
-    links = set()
     spider_urls = soup.find_all('a', href=re.compile("\.html$"))
     unique_links = set([link.get('href') for link in spider_urls])
     for link in unique_links:
         if start[0] in link:
-            links.add(link)
-    return links
+            url = Url(link)
+            session.add(url)
+    session.commit()
 
 
 def main():
     '''The work horse'''
     r = requests.get(full_url)
     soup = BeautifulSoup(r.text)
-    links = set()
-    pdfs = get_pdfs(soup)
-    for link in get_urls(soup):
-        links.add(link)
+    get_pdfs(soup, address=r.url)
+    get_urls(soup)
 
 
 if __name__ == '__main__':
