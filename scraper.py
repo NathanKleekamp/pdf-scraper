@@ -29,7 +29,7 @@ if start[0] == '/':
 
 _baseurl = 'http://exchanges.state.gov/'
 full_url = _baseurl+start
-start = start.split('/')
+directory = start.split('/')
 
 
 # Setting up the database and database classes
@@ -39,7 +39,7 @@ session = Session()
 Base = declarative_base()
 
 
-class Url(Base):
+class SpiderUrl(Base):
     '''List of urls for the spider'''
     __tablename__ = 'urls'
     id = Column(Integer, primary_key=True)
@@ -55,22 +55,22 @@ class Pdf(Base):
     '''The pdf files themselves'''
     __tablename__ = 'pdfs'
     id = Column(Integer, primary_key=True)
-    pdf_url = Column(String, unique=True)
+    url = Column(String, unique=True)
 
-    def __init__(self, pdf_url):
-        self.pdf_url = pdf_url
+    def __init__(self, url):
+        self.url = url
 
 
-class PdfUrl(Base):
-    '''Pages on which the pdf is found'''
-    __tablename__ = 'pdf_pages'
+class PageUrl(Base):
+    '''Pages on which the pdf is linked'''
+    __tablename__ = 'page_urls'
     id = Column(Integer, primary_key=True)
-    page_url = Column(String)
+    url = Column(String)
     pdf_id = Column(Integer, ForeignKey('pdfs.id'))
-    pdf_address = relationship('Pdf', backref=backref('pdf_pages', order_by=id))
+    pdf_url = relationship('Pdf', backref=backref('page_urls', order_by=id))
 
-    def __init__(self, page_url):
-        self.page_url = page_url
+    def __init__(self, url):
+        self.url = url
 
 
 Base.metadata.create_all(engine)
@@ -78,14 +78,21 @@ Base.metadata.create_all(engine)
 
 # Functions
 def get_pdfs(soup, address=None):
-    '''Obtains a list of pdfs on a given page and saves them to the db.'''
+    '''
+    Obtains a list of pdfs on a given page and saves pdf linke to the db.
+    '''
     pdf_links = soup.find_all('a', href=re.compile("\.pdf$"))
     unique_pdfs = set([link.get('href') for link in pdf_links])
-    # Need to check if pdf already in the database before next step
     for pdf in unique_pdfs:
-        pdf = Pdf(pdf)
-        pdf.pdf_pages = [PdfUrl(address)]
-        session.add(pdf)
+        if not session.query(Pdf).filter(Pdf.url==pdf).all():
+            pdf = Pdf(pdf)
+            pdf.page_urls.append(PageUrl(address))
+            session.add(pdf)
+        else:
+            pdf = session.query(Pdf).filter(
+                  Pdf.url==pdf).all()
+            pdf[0].page_urls.append(PageUrl(address))
+            session.add(pdf[0])
     session.commit()
 
 
@@ -93,12 +100,22 @@ def get_urls(soup):
     '''Grabs urls to pages within the same "directory/folder"'''
     spider_urls = soup.find_all('a', href=re.compile("\.html$"))
     unique_links = set([link.get('href') for link in spider_urls])
-    # Not fully tested
     for link in unique_links:
-        if start[0] in link:
-            url = Url(link)
-            session.add(url)
+        print('Checking {0}'.format(link))
+        if directory[0] in link:
+            if not session.query(SpiderUrl).filter(
+                   SpiderUrl.url==link).all():
+                print('Adding {0} to DB'.format(link))
+                url = SpiderUrl(link)
+                session.add(url)
     session.commit()
+
+
+# May not need a generator function
+def not_visited():
+    not_visited = session.query(SpiderUrl).filter(
+                  SpiderUrl.visited==False).first()
+    yield not_visited
 
 
 def main():
@@ -107,6 +124,10 @@ def main():
     soup = BeautifulSoup(r.text)
     get_pdfs(soup, address=r.url)
     get_urls(soup)
+    #visited = session.query(SpiderUrl).filter(SpiderUrl.url==r.text).all
+    #for i in visited:
+    #    i.visited = True
+    #full_url = not_visited()
 
 
 if __name__ == '__main__':
