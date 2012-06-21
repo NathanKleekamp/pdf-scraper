@@ -81,6 +81,7 @@ def get_pdfs(soup, address=None):
     '''Obtains a list of pdfs on a given page and saves them to the db.'''
     pdf_links = soup.find_all('a', href=re.compile("\.pdf$"))
     unique_pdfs = set([link.get('href') for link in pdf_links])
+    # Need to check if pdf already in the database before next step
     for pdf in unique_pdfs:
         pdf = Pdf(pdf)
         pdf.pdf_pages = [PdfUrl(address)]
@@ -92,6 +93,7 @@ def get_urls(soup):
     '''Grabs urls to pages within the same "directory/folder"'''
     spider_urls = soup.find_all('a', href=re.compile("\.html$"))
     unique_links = set([link.get('href') for link in spider_urls])
+    # Not fully tested
     for link in unique_links:
         if start[0] in link:
             url = Url(link)
