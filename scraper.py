@@ -113,8 +113,6 @@ def get_urls(soup):
 
 # May not need a generator function
 def not_visited():
-    not_visited = session.query(SpiderUrl).filter(
-                  SpiderUrl.visited==False).first()
     yield not_visited
 
 
@@ -124,6 +122,8 @@ def main():
     soup = BeautifulSoup(r.text)
     get_pdfs(soup, address=r.url)
     get_urls(soup)
+    not_visited = session.query(SpiderUrl).filter(
+                  SpiderUrl.visited==False).first()
     #visited = session.query(SpiderUrl).filter(SpiderUrl.url==r.text).all
     #for i in visited:
     #    i.visited = True
