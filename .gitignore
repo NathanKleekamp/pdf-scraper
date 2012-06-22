@@ -1,4 +1,6 @@
 # My files/directories
+log.*
+output.csv
 database.db
 venv
 *.py[co]

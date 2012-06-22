@@ -4,11 +4,14 @@
 Scrapes exchanges for pdf files. Returns a csv file with each pdf in a given
 section and the page(s) on which they're linked.
 '''
+from __future__ import print_function
 
 
 import re
+import csv
 import sys
 import requests
+
 
 from bs4 import BeautifulSoup
 from sqlalchemy import create_engine, Column, Integer, String, Boolean,\
@@ -27,10 +30,10 @@ except IndexError:
 if start[0] == '/':
     start = start[1:]
 
-_baseurl = 'http://exchanges.state.gov/'
-full_url = _baseurl+start
+baseurl = 'http://exchanges.state.gov/'
+full_url = baseurl+start
 directory = start.split('/')
-
+log = open('log.txt', 'a')
 
 # Setting up the database and database classes
 engine = create_engine('sqlite:///database.db')
@@ -77,9 +80,20 @@ Base.metadata.create_all(engine)
 
 
 # Functions
-def get_pdfs(soup, address=None):
+def visited(address):
+    address = address.split('http://exchanges.state.gov')[1]
+    not_visited = session.query(SpiderUrl).filter(
+                    SpiderUrl.url==address).first
+    if not_visited() is not None:
+        url = not_visited()
+        url.visited = True
+
+
+# This function will create duplicate copies on the page_urls table if the
+# script is run on the same page more than once. Needs fixin'
+def get_pdfs(soup, address):
     '''
-    Obtains a list of pdfs on a given page and saves pdf linke to the db.
+    Obtains a list of pdfs on a given page and saves pdf links to the db.
     '''
     pdf_links = soup.find_all('a', href=re.compile("\.pdf$"))
     unique_pdfs = set([link.get('href') for link in pdf_links])
@@ -96,38 +110,58 @@ def get_pdfs(soup, address=None):
     session.commit()
 
 
-def get_urls(soup):
+def get_urls(soup, address):
     '''Grabs urls to pages within the same "directory/folder"'''
     spider_urls = soup.find_all('a', href=re.compile("\.html$"))
     unique_links = set([link.get('href') for link in spider_urls])
     for link in unique_links:
-        print('Checking {0}'.format(link))
-        if directory[0] in link:
+        if 'cms' in link:
+            message = 'Found link ({0}) to CMS on {1}\n'.format(link, address)
+            log.write(message)
+            print(message, end='')
+            pass
+        elif directory[0] in link:
             if not session.query(SpiderUrl).filter(
                    SpiderUrl.url==link).all():
-                print('Adding {0} to DB'.format(link))
+                message = 'Adding {0} to DB\n'.format(link)
+                log.write(message)
+                print(message, end='')
                 url = SpiderUrl(link)
                 session.add(url)
+    visited(address)
     session.commit()
-
-
-# May not need a generator function
-def not_visited():
-    yield not_visited
 
 
 def main():
     '''The work horse'''
     r = requests.get(full_url)
+    address = r.url
     soup = BeautifulSoup(r.text)
-    get_pdfs(soup, address=r.url)
-    get_urls(soup)
+    get_pdfs(soup, address)
+    get_urls(soup, address)
     not_visited = session.query(SpiderUrl).filter(
-                  SpiderUrl.visited==False).first()
-    #visited = session.query(SpiderUrl).filter(SpiderUrl.url==r.text).all
-    #for i in visited:
-    #    i.visited = True
-    #full_url = not_visited()
+                  SpiderUrl.visited==False).first
+    while not_visited() is not None:
+        address = r.url
+        message = 'Checking {0}\n'.format(address)
+        print(message, end='')
+        log.write(message)
+        soup = BeautifulSoup(r.text)
+        get_pdfs(soup, address)
+        get_urls(soup, address)
+        if not not_visited():
+            break
+        next = not_visited().url[1:]
+        r = requests.get(baseurl+next)
+        if r.status_code == 404:
+            pass
+    with open('output.csv', 'wb') as f:
+        writer = csv.writer(f)
+        records = session.query(Pdf).join(PageUrl).all()
+        for record in records:
+            writer.writerow([record.url])
+            for entry in record.page_urls:
+                writer.writerow(['', entry.url])
 
 
 if __name__ == '__main__':
