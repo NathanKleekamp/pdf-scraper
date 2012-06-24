@@ -24,15 +24,14 @@ from sqlalchemy.orm import sessionmaker, relationship, backref
 try:
     start = sys.argv[1]
 except IndexError:
-    print('You must enter a starting point, like heritage/index.html')
+    print('You must enter a starting point, like http://exchanges.state.gov/heritage/index.html')
     start = raw_input('Enter a starting point: ')
 
-if start[0] == '/':
-    start = start[1:]
+parsed = start.split('/')
 
-baseurl = 'http://exchanges.state.gov/'
-full_url = baseurl+start
-directory = start.split('/')
+baseurl = '/'.join(parsed[:3])
+path = '/'.join(parsed[3:len(parsed)])
+directory = parsed[3]
 log = open('log.txt', 'a')
 
 # Setting up the database and database classes
@@ -81,7 +80,7 @@ Base.metadata.create_all(engine)
 
 # Functions
 def visited(address):
-    address = address.split('http://exchanges.state.gov')[1]
+    address = address.split(baseurl)[1]
     not_visited = session.query(SpiderUrl).filter(
                     SpiderUrl.url==address).first
     if not_visited() is not None:
@@ -91,12 +90,30 @@ def visited(address):
 
 # This function will create duplicate copies on the page_urls table if the
 # script is run on the same page more than once. Needs fixin'
-def get_pdfs(soup, address):
+def processer(soup, address):
     '''
-    Obtains a list of pdfs on a given page and saves pdf links to the db.
+    Spiders pages and looks for pdfs. Records on which page the pdf is 
+    located.
     '''
+    spider_urls = soup.find_all('a', href=re.compile("\.html$"))
+    unique_links = set([link.get('href') for link in spider_urls])
     pdf_links = soup.find_all('a', href=re.compile("\.pdf$"))
     unique_pdfs = set([link.get('href') for link in pdf_links])
+    for link in unique_links:
+        if 'cms' in link:
+            message = 'Found link to CMS: ({0}) on: {1}\n'.format(
+                        link, address)
+            log.write(message)
+            print(message, end='')
+            pass
+        elif directory in link:
+            if not session.query(SpiderUrl).filter(
+                   SpiderUrl.url==link).all():
+                message = 'Adding {0} to DB\n'.format(link)
+                log.write(message)
+                print(message, end='')
+                url = SpiderUrl(link)
+                session.add(url)
     for pdf in unique_pdfs:
         if not session.query(Pdf).filter(Pdf.url==pdf).all():
             pdf = Pdf(pdf)
@@ -107,52 +124,24 @@ def get_pdfs(soup, address):
                   Pdf.url==pdf).all()
             pdf[0].page_urls.append(PageUrl(address))
             session.add(pdf[0])
-    session.commit()
-
-
-def get_urls(soup, address):
-    '''Grabs urls to pages within the same "directory/folder"'''
-    spider_urls = soup.find_all('a', href=re.compile("\.html$"))
-    unique_links = set([link.get('href') for link in spider_urls])
-    for link in unique_links:
-        if 'cms' in link:
-            message = 'Found link ({0}) to CMS on {1}\n'.format(link, address)
-            log.write(message)
-            print(message, end='')
-            pass
-        elif directory[0] in link:
-            if not session.query(SpiderUrl).filter(
-                   SpiderUrl.url==link).all():
-                message = 'Adding {0} to DB\n'.format(link)
-                log.write(message)
-                print(message, end='')
-                url = SpiderUrl(link)
-                session.add(url)
     visited(address)
     session.commit()
 
 
 def main():
-    '''The work horse'''
-    r = requests.get(full_url)
-    address = r.url
-    soup = BeautifulSoup(r.text)
-    get_pdfs(soup, address)
-    get_urls(soup, address)
-    not_visited = session.query(SpiderUrl).filter(
-                  SpiderUrl.visited==False).first
-    while not_visited() is not None:
+    r = requests.get(start)
+    while True:
         address = r.url
+        soup = BeautifulSoup(r.text)
         message = 'Checking {0}\n'.format(address)
         print(message, end='')
         log.write(message)
-        soup = BeautifulSoup(r.text)
-        get_pdfs(soup, address)
-        get_urls(soup, address)
+        processer(soup, address)
+        not_visited = session.query(SpiderUrl).filter(
+                        SpiderUrl.visited==False).first
         if not not_visited():
             break
-        next = not_visited().url[1:]
-        r = requests.get(baseurl+next)
+        r = requests.get(baseurl+not_visited().url)
         if r.status_code == 404:
             pass
     with open('output.csv', 'wb') as f:
@@ -162,7 +151,6 @@ def main():
             writer.writerow([record.url])
             for entry in record.page_urls:
                 writer.writerow(['', entry.url])
-
 
 if __name__ == '__main__':
     main()
