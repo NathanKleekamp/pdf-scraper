@@ -35,6 +35,7 @@ path = '/'.join(parsed[3:len(parsed)])
 directory = parsed[3]
 log = open('log.txt', 'a')
 
+
 # Setting up the database and database classes
 engine = create_engine('sqlite:///database.db')
 Session = sessionmaker(bind=engine)
