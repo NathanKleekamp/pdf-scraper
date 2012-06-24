@@ -29,7 +29,6 @@ except IndexError:
     start = raw_input('Enter a starting point: ')
 
 parsed = start.split('/')
-
 baseurl = '/'.join(parsed[:3])
 path = '/'.join(parsed[3:len(parsed)])
 directory = parsed[3]
@@ -102,14 +101,21 @@ def processer(soup, address):
     pdf_links = soup.find_all('a', href=re.compile("\.pdf$"))
     unique_pdfs = set([link.get('href') for link in pdf_links])
     for link in unique_links:
-        if 'cms' in link:
-            message = 'Found link to CMS: ({0}) on: {1}\n'.format(
+        if 'cms' in link or 'staging' in link:
+            message = 'Found link to CMS or staging ({0}) on: {1}\n'.format(
+                       link, address)
+            log.write(message)
+            print(message, end='')
+            pass
+        elif directory in link and baseurl in link:
+            message = 'Found non-relative link: {0} on: {1}\n'.format(
                         link, address)
             log.write(message)
             print(message, end='')
             pass
-        # Not enough to check if dir name in URL. Will send spider off to
-        # other sites.
+        # This should ignore outside links with directory name
+        elif directory in link and 'http://' in link and basurl not in link:
+            pass
         elif directory in link:
             if not session.query(SpiderUrl).filter(
                    SpiderUrl.url==link).all():
@@ -135,12 +141,11 @@ def processer(soup, address):
 def main():
     r = requests.get(start)
     while True:
-        address = r.url
         soup = BeautifulSoup(r.text, 'lxml')
-        message = 'Checking {0}\n'.format(address)
+        message = 'Checking {0}\n'.format(r.url)
         print(message, end='')
         log.write(message)
-        processer(soup, address)
+        processer(soup, r.url)
         not_visited = session.query(SpiderUrl).filter(
                         SpiderUrl.visited==False).first
         if not not_visited():
