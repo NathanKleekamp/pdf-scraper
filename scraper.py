@@ -10,6 +10,7 @@ from __future__ import print_function
 import re
 import csv
 import sys
+import lxml
 import requests
 
 
@@ -92,7 +93,7 @@ def visited(address):
 # script is run on the same page more than once. Needs fixin'
 def processer(soup, address):
     '''
-    Spiders pages and looks for pdfs. Records on which page the pdf is 
+    Spiders pages and looks for pdfs. Records on which page the pdf is
     located.
     '''
     spider_urls = soup.find_all('a', href=re.compile("\.html$"))
@@ -106,6 +107,8 @@ def processer(soup, address):
             log.write(message)
             print(message, end='')
             pass
+        # Not enough to check if dir name in URL. Will send spider off to
+        # other sites.
         elif directory in link:
             if not session.query(SpiderUrl).filter(
                    SpiderUrl.url==link).all():
@@ -132,7 +135,7 @@ def main():
     r = requests.get(start)
     while True:
         address = r.url
-        soup = BeautifulSoup(r.text)
+        soup = BeautifulSoup(r.text, 'lxml')
         message = 'Checking {0}\n'.format(address)
         print(message, end='')
         log.write(message)
@@ -141,6 +144,8 @@ def main():
                         SpiderUrl.visited==False).first
         if not not_visited():
             break
+        # This needs to be fixed. Should only check if not visited is a
+        # relative url.
         r = requests.get(baseurl+not_visited().url)
         if r.status_code == 404:
             pass
