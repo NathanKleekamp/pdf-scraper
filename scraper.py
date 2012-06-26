@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 '''
-Spiders a site or section of a site looking for pdfs. By default, this
+Spiders a site or section of a site looking for pdfs. By design, this
 script will not spider links offsite.
 '''
 
@@ -80,34 +80,53 @@ except IndexError:
     print('You must enter a starting point, like http://exchanges.state.gov/heritage/index.html')
     start = Url(raw_input('Enter a starting point: '))
 
+try:
+    html_flag = sys.argv[2]
+except IndexError:
+    print("Your site's page links end in .html")
+    html_flag = raw_input("Enter True or False: ").lower()
+
 
 def get_pdfs(soup, address):
-    unique_pdfs = set([link.get('href') for link in soup.find_all(
-                      'a', href=re.compile('\.pdf'))])
-    for pdf in unique_pdfs:
+    diff_pdfs = set([urlparse.urljoin(start.base, link.get('href')) for
+                link in soup.find_all('a', href=re.compile('\.pdf'))])
+    for pdf in diff_pdfs:
         if not session.query(Pdf).filter(
-                Pdf.url==urlparse.urljoin(start.base, pdf)).first():
-            pdf = Pdf(urlparse.urljoin(start.base, pdf))
+                Pdf.url==pdf).first():
+            pdf = Pdf(pdf)
             pdf.page_urls.append(PageUrl(address))
             session.add(pdf)
         else:
             pdf = session.query(Pdf).filter(
-                  Pdf.url==urlparse.urljoin(start.base, pdf)).first()
+                  Pdf.url==pdf).first()
             pdf.page_urls.append(PageUrl(address))
             session.add(pdf)
     session.commit()
 
 
 def visited(soup, address):
-    # This will not work on J1 because it's looking only for a path in the db
-    # but if I store the complete url in db and get rid of .path, it should
-    # work
-    address = urlparse.urlparse(address).path
     not_visited = session.query(SpiderUrl).filter(
                   SpiderUrl.url==address).first
     if not_visited() is not None:
         url = not_visited()
         url.visited = True
+
+
+def spider(soup, address):
+    if html_flag == 'true':
+        diff_links = set([urlparse.urljoin(start.base, link.get('href'))
+                          for link in soup.find_all('a', href=re.compile(
+                          "\.html$"))])
+    # Incomplete
+    elif html_flag == 'false':
+        diff_links = set([urlparse.urljoin(start.base, link.get('href')) for
+                          link in soup.find_all('a', href=re.compile(''))])
+    for link in diff_links:
+        if 'cms' in link or 'staging' in link:
+            pass
+        elif start.base not in link:
+            pass
+    pass
 
 
 def main():
