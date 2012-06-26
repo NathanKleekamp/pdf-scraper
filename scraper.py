@@ -85,6 +85,8 @@ try:
 except IndexError:
     print("Your site's page links end in .html")
     html_flag = raw_input("Enter True or False: ").lower()
+    if html_flag not in ['true', 'false']:
+        html_flag = raw_input("You must enter True or False: ")
 
 
 def get_pdfs(soup, address):
@@ -99,6 +101,7 @@ def get_pdfs(soup, address):
         else:
             pdf = session.query(Pdf).filter(
                   Pdf.url==pdf).first()
+            # Need to test if the page address is already in the db.
             pdf.page_urls.append(PageUrl(address))
             session.add(pdf)
     session.commit()
