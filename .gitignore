@@ -1,4 +1,5 @@
 # My files/directories
+old_scraper.py
 log.*
 output.csv
 database.db
