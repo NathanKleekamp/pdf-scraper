@@ -100,6 +100,8 @@ def get_pdfs(soup, address):
 
 def visited(soup, address):
     # This will not work on J1 because it's looking only for a path in the db
+    # but if I store the complete url in db and get rid of .path, it should
+    # work
     address = urlparse.urlparse(address).path
     not_visited = session.query(SpiderUrl).filter(
                   SpiderUrl.url==address).first
