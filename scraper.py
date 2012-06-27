@@ -88,10 +88,10 @@ if 'http://' not in start.url:
 try:
     html_flag = sys.argv[2].lower()
 except IndexError:
-    print("Your site's page links end in .html")
+    print("Do your site's page links end in .html")
     html_flag = raw_input("Enter Yes or No: ").lower()
 if html_flag not in ['yes', 'no']:
-    html_flag = raw_input("Your site's page URLs end in .html? You must enter Yes or No: ")
+    html_flag = raw_input("Do your site's page URLs end in .html? You must enter Yes or No: ")
 
 
 def get_pdfs(soup, address):
