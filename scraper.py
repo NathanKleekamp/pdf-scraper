@@ -1,18 +1,18 @@
 #!/usr/bin/env python
 
 '''
-Spiders a site or section of a site looking for pdfs. By design, this
-script will not spider links offsite.
-'''
+Spiders sections of J1 or Exchanges looking for pdfs and reports on
+the PDFs location throughout the section.
 
-from __future__ import print_function
+By design, this script will not spider links offsite or the entirety
+of those sites. Future versions may support spidering whole sites.
+'''
 
 import re
 import csv
 import sys
 import urlparse
 import lxml
-import domains
 import requests
 
 from bs4 import BeautifulSoup
@@ -79,35 +79,19 @@ try:
 except IndexError:
     print('You must enter a starting point, like http://exchanges.state.gov/heritage/index.html')
     start = Url(raw_input('Enter a starting point: '))
+if 'http://' not in start.url:
+    start = Url(raw_input('The starting point must be a valid URL. Please enter a starting point: '))
 
 try:
-    html_flag = sys.argv[2]
+    html_flag = sys.argv[2].lower()
 except IndexError:
     print("Your site's page links end in .html")
-    html_flag = raw_input("Enter True or False: ").lower()
-    if html_flag not in ['true', 'false']:
-        html_flag = raw_input("You must enter True or False: ")
+    html_flag = raw_input("Enter Yes or No: ").lower()
+if html_flag not in ['yes', 'no']:
+    html_flag = raw_input("Your site's page URLs end in .html? You must enter Yes or No: ")
 
 
-def get_pdfs(soup, address):
-    diff_pdfs = set([urlparse.urljoin(start.base, link.get('href')) for
-                link in soup.find_all('a', href=re.compile('\.pdf'))])
-    for pdf in diff_pdfs:
-        if not session.query(Pdf).filter(
-                Pdf.url==pdf).first():
-            pdf = Pdf(pdf)
-            pdf.page_urls.append(PageUrl(address))
-            session.add(pdf)
-        else:
-            pdf = session.query(Pdf).filter(
-                  Pdf.url==pdf).first()
-            # Need to test if the page address is already in the db.
-            pdf.page_urls.append(PageUrl(address))
-            session.add(pdf)
-    session.commit()
-
-
-def visited(soup, address):
+def visited(address):
     not_visited = session.query(SpiderUrl).filter(
                   SpiderUrl.url==address).first
     if not_visited() is not None:
@@ -116,32 +100,65 @@ def visited(soup, address):
 
 
 def spider(soup, address):
-    if html_flag == 'true':
+    if html_flag == 'yes':
         diff_links = set([urlparse.urljoin(start.base, link.get('href'))
                           for link in soup.find_all('a', href=re.compile(
                           "\.html$"))])
-    # Incomplete
-    elif html_flag == 'false':
+    elif html_flag == 'no':
         diff_links = set([urlparse.urljoin(start.base, link.get('href')) for
-                          link in soup.find_all('a', href=re.compile(''))])
+                          link in soup.find_all('a', href=re.compile(
+                          r'^(?!#)'))])
     for link in diff_links:
         if 'cms' in link or 'staging' in link:
             pass
         elif start.base not in link:
             pass
-    pass
+        elif urlparse.urlparse(start.url).path.split('/')[1] in link:
+            if html_flag == 'no':
+                if link[-1:] != '/':
+                    link = link+'/'
+            if not session.query(SpiderUrl).filter(
+                   SpiderUrl.url==link).all():
+                url = SpiderUrl(link)
+                print('Adding {0} to db'.format(url.url))
+                session.add(url)
+    visited(address)
+    session.commit()
+
+
+def get_pdfs(soup, address):
+    diff_pdfs = set([urlparse.urljoin(start.base, link.get('href')) for
+                link in soup.find_all('a', href=re.compile('\.pdf'))])
+    for pdf in diff_pdfs:
+        if not session.query(Pdf).filter(
+               Pdf.url==pdf).first():
+            pdf = Pdf(pdf)
+            pdf.page_urls.append(PageUrl(address))
+            print('Adding PDF: {0}'.format(pdf.url))
+            session.add(pdf)
+        else:
+            pdf = session.query(Pdf).filter(
+                  Pdf.url==pdf).first()
+            if address in [i.url for i in pdf.page_urls]:
+                pass
+            else:
+                pdf.page_urls.append(PageUrl(address))
+                session.add(pdf)
+    session.commit()
 
 
 def main():
     r = requests.get(start.url)
     while True:
+        print('Checking {0}'.format(r.url))
         soup = BeautifulSoup(r.text, 'lxml')
         get_pdfs(soup, r.url)
+        spider(soup, r.url)
         not_visited = session.query(SpiderUrl).filter(
                       SpiderUrl.visited==False).first
         if not not_visited():
             break
-        r.requests.get(urlparse.urljoin(start.base, not_visited().url))
+        r = requests.get(not_visited().url)
         if r.status_code == 404:
             pass
     with open('output.csv', 'wb') as f:
