@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python2.7
 
 '''
 Version 0.12
@@ -9,6 +9,7 @@ By design, this script will not spider links offsite or the entirety
 of those sites. Future versions may support spidering whole sites.
 '''
 
+import os
 import re
 import csv
 import sys
@@ -93,55 +94,6 @@ if html_flag not in ['yes', 'no']:
     html_flag = raw_input("Your site's page URLs end in .html? You must enter Yes or No: ")
 
 
-def visited(address):
-    '''Marks the pages as visited after being spidered'''
-    not_visited = session.query(SpiderUrl).filter(
-                  SpiderUrl.url==address).first
-    if not_visited() is not None:
-        url = not_visited()
-        url.visited = True
-
-
-def spider(soup, address):
-    '''
-    Grabs all the urls on the page then checks if they're in the section it's
-    supposed to spider. If so, it looks at the db to see if it's already
-    there. If it's not, it saves it to the db to be visited later. Once it's
-    finished with the page, it marks it as visited.
-    '''
-    if html_flag == 'yes':
-        # Looks for all <a href=""> links with .html at the end. If it's
-        # a relative link, it prepends the domain name.
-        diff_links = set([urlparse.urljoin(start.base, link.get('href'))
-                          for link in soup.find_all('a', href=re.compile(
-                          "\.html$"))])
-    elif html_flag == 'no':
-        # Does the same as above but for links that don't end in .html.
-        # Actually, it grabs all links that don't start with a #.
-        diff_links = set([urlparse.urljoin(start.base, link.get('href')) for
-                          link in soup.find_all('a', href=re.compile(
-                          r'^(?!#)'))])
-    for link in diff_links:
-        if 'cms' in link or 'staging' in link:
-            pass
-        elif start.base not in link:
-            pass
-        elif urlparse.urlparse(start.url).path.split('/')[1] in link:
-            # This little bit of code is necessary to prevent the spider from
-            # entering redirect hell when the link doesn't end with a / because
-            # it will never mark /visited as /visited/ in the db
-            if html_flag == 'no':
-                if link[-1:] != '/':
-                    link = link+'/'
-            if not session.query(SpiderUrl).filter(
-                   SpiderUrl.url==link).first():
-                url = SpiderUrl(link)
-                print('Adding {0} to db'.format(url.url))
-                session.add(url)
-    visited(address)
-    session.commit()
-
-
 def get_pdfs(soup, address):
     '''
     Grabs the pdfs on a page and saves them to the db if they're not already
@@ -167,14 +119,59 @@ def get_pdfs(soup, address):
     session.commit()
 
 
+def visited(address):
+    '''Marks the pages as visited after being spidered'''
+    not_visited = session.query(SpiderUrl).filter(
+                  SpiderUrl.url==address).first
+    if not_visited() is not None:
+        url = not_visited()
+        url.visited = True
+
+
+def spider(soup, address):
+    '''
+    Grabs all the urls on a page then checks if they're in the section it's
+    supposed to spider. If so, it looks at the db to see if it's already
+    there. If it's not, it saves it to the db to be visited later. Once it's
+    finished with the page, it marks it as visited.
+    '''
+    webpage_extensions = ['.html', '']
+    get_pdfs(soup, address)
+    # Looks for all <a href=""> links that don't start with # and prepends the
+    # scheme and netloc to them.
+    diff_links = set([urlparse.urljoin(start.base, link.get('href')) for
+                      link in soup.find_all('a', href=re.compile(
+                      r'^(?!#)'))])
+    for link in diff_links:
+        link = link.strip()
+        if 'cms' in link or 'staging' in link:
+            pass
+        elif start.base not in link:
+            pass
+        elif os.path.splitext(link)[1] not in webpage_extensions:
+            pass
+        elif urlparse.urlparse(start.url).path.split('/')[1] in link:
+            # Prevent the spider from entering redirect hell when the
+            # the link doesn't end with / because it will never mark
+            # /visited as /visited/ in the db
+            if html_flag == 'no':
+                if link[-1:] != '/':
+                    link = link+'/'
+            if not session.query(SpiderUrl).filter(
+                   SpiderUrl.url==link).first():
+                url = SpiderUrl(link)
+                print('Adding {0} to db'.format(url.url))
+                session.add(url)
+    visited(address)
+    session.commit()
+
+
 def main():
     '''The function that makes it all happen.'''
     r = requests.get(start.url)
     while True:
         print('Checking {0}'.format(r.url))
         soup = BeautifulSoup(r.text, 'lxml')
-        # Should this call be moved to spider()?
-        get_pdfs(soup, r.url)
         spider(soup, r.url)
         not_visited = session.query(SpiderUrl).filter(
                       SpiderUrl.visited==False).first
