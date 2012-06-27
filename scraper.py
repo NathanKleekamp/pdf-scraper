@@ -78,7 +78,7 @@ class Url(object):
 try:
     start = Url(sys.argv[1])
 except IndexError:
-    print('You must enter a starting point, like http://exchanges.state.gov/heritage/index.html')
+    print('You must enter a starting point, like http://www.example.com/start/index.html')
     start = Url(raw_input('Enter a starting point: '))
 if 'http://' not in start.url:
     start = Url(raw_input('The starting point must be a valid URL. Please enter a starting point: '))
