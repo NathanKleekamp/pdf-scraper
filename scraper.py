@@ -137,8 +137,8 @@ def spider(soup, address):
     '''
     webpage_extensions = ['.html', '']
     get_pdfs(soup, address)
-    # Looks for all <a href=""> links that don't start with # and prepends the
-    # scheme and netloc to them.
+    # Looks for all <a href=""> links that don't start with # and prepends
+    # the scheme and netloc to them.
     diff_links = set([urlparse.urljoin(start.base, link.get('href')) for
                       link in soup.find_all('a', href=re.compile(
                       r'^(?!#)'))])
