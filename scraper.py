@@ -134,7 +134,7 @@ def spider(soup, address):
                 if link[-1:] != '/':
                     link = link+'/'
             if not session.query(SpiderUrl).filter(
-                   SpiderUrl.url==link).all():
+                   SpiderUrl.url==link).first():
                 url = SpiderUrl(link)
                 print('Adding {0} to db'.format(url.url))
                 session.add(url)
