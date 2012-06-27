@@ -13,6 +13,7 @@ import os
 import re
 import csv
 import sys
+import logging
 import urlparse
 import lxml
 import requests
@@ -22,6 +23,12 @@ from sqlalchemy import create_engine, Column, Integer, String, Boolean,\
      ForeignKey
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker, relationship, backref
+
+
+# Setting up logging
+logging.basicConfig(filename='spider.log', filemode='w',
+                    format='%(levelname)s: %(message)s',
+                    level=logging.INFO)
 
 
 # Setting up the database and database classes
@@ -107,6 +114,7 @@ def get_pdfs(soup, address):
             pdf = Pdf(pdf)
             pdf.page_urls.append(PageUrl(address))
             print('Adding PDF: {0}'.format(pdf.url))
+            logging.info('Adding PDF: %s', pdf.url)
             session.add(pdf)
         else:
             pdf = session.query(Pdf).filter(
@@ -145,6 +153,7 @@ def spider(soup, address):
     for link in diff_links:
         link = link.strip()
         if 'cms' in link or 'staging' in link:
+            logging.info('Found link to cms or staging: %s', link)
             pass
         elif start.base not in link:
             pass
@@ -160,7 +169,7 @@ def spider(soup, address):
             if not session.query(SpiderUrl).filter(
                    SpiderUrl.url==link).first():
                 url = SpiderUrl(link)
-                print('Adding {0} to db'.format(url.url))
+                logging.debug('Adding Page: %s', url.url)
                 session.add(url)
     visited(address)
     session.commit()
@@ -170,7 +179,7 @@ def main():
     '''The function that makes it all happen.'''
     r = requests.get(start.url)
     while True:
-        print('Checking {0}'.format(r.url))
+        logging.debug('Checking %s', r.url)
         soup = BeautifulSoup(r.text, 'lxml')
         spider(soup, r.url)
         not_visited = session.query(SpiderUrl).filter(
@@ -179,6 +188,7 @@ def main():
             break
         r = requests.get(not_visited().url)
         if r.status_code == 404:
+            logging.info('Found broken link: %s', r.url)
             pass
     with open('output.csv', 'wb') as f:
         writer = csv.writer(f)
