@@ -1,7 +1,7 @@
 #!/usr/bin/env python2.7
 
 '''
-Version 0.12
+Version 0.13
 Spiders sections of J1 or Exchanges looking for pdfs and reports on
 the PDF's location throughout the section.
 
