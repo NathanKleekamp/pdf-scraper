@@ -32,18 +32,21 @@ logging.basicConfig(filename='spider.log', filemode='w',
 
 
 # Setting up the database and database classes
+Session = sessionmaker()
 engine = create_engine('sqlite:///database.db')
-Session = sessionmaker(bind=engine)
+Session.configure(bind=engine)
 session = Session()
 Base = declarative_base()
 
 
-class SpiderUrl(Base):
+class Link(Base):
     '''List of urls for the spider'''
-    __tablename__ = 'urls'
+    __tablename__ = 'links'
     id = Column(Integer, primary_key=True)
     url = Column(String, unique=True)
     visited = Column(Boolean, default=False)
+    pdf_id = Column(Integer, ForeignKey('pdfs.id'))
+    pdf_url = relationship('Pdf', backref=backref('links', order_by=id))
 
     def __init__(self, url, visited=False):
         self.url = url
@@ -55,18 +58,6 @@ class Pdf(Base):
     __tablename__ = 'pdfs'
     id = Column(Integer, primary_key=True)
     url = Column(String, unique=True)
-
-    def __init__(self, url):
-        self.url = url
-
-
-class PageUrl(Base):
-    '''Pages on which the pdf is linked'''
-    __tablename__ = 'page_urls'
-    id = Column(Integer, primary_key=True)
-    url = Column(String)
-    pdf_id = Column(Integer, ForeignKey('pdfs.id'))
-    pdf_url = relationship('Pdf', backref=backref('page_urls', order_by=id))
 
     def __init__(self, url):
         self.url = url
