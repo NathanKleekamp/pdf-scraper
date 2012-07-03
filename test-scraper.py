@@ -23,6 +23,7 @@ class TestScraper(unittest.TestCase):
         session.close()
 
     def testPdf(self):
+        # Not a good test. Needs to test the query from db
         self.assertTrue(self.pdf1.url == 'test1.pdf')
 
     def testLink(self):
