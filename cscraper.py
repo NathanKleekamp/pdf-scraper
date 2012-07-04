@@ -66,3 +66,12 @@ class Pdf(Base):
 Base.metadata.create_all(engine)
 
 
+class Spider(object):
+    pass
+
+
+def main():
+    pass
+
+if __name__ == '__main__':
+    main()
