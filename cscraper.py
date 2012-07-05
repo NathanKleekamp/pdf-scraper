@@ -67,15 +67,26 @@ Base.metadata.create_all(engine)
 
 
 class Spider(object):
-    def __init__(self, start)
+    def __init__(self, start, depth=None):
         self.start = start
+        self.depth = depth
 
-    def parse_start(self.start):
+    def parse_start(self, start):
         parsed = urlparse.urlparse(self.start)
+        d = {}
+        d['base'] = '{0}://{1}'.format(parsed.scheme, parsed.netloc)
+        d['path'] = parsed.path
+        d['directory'] = parsed.path.split('/')[0]
+        return d
 
-    def get_links(page):
-        [urlparse.urljoin(page, link.get('href')) 
-                for link in soup.find_all('a', href=re.compile(r'^(?!#)'))]
+    def get_links(self, page):
+        return set([urlparse.urljoin(page, link.get('href'))
+                   for link in soup.find_all('a',
+                   href=re.compile(r'^(?![(#)(mailto)(javascript)])'))])
+
+    def get_pdfs(self, address):
+        return set([urlparse.urljoin(start.base, link.get('href')) for
+                   link in soup.find_all('a', href=re.compile('\.pdf'))])
 
 def main():
     pass

@@ -2,11 +2,13 @@
 
 import unittest
 
-from cscraper import Spider, Url
+from cscraper import Spider
 
 
 class TestSpider(unittest.TestCase):
     def setUp(self):
+        with open('/Users/nathan/Desktop/example.html') as f:
+                self.html = f.read()
         self.start = 'http://www.iana.org/domains/example/'
         self.spider = Spider(self.start)
 
@@ -15,36 +17,33 @@ class TestSpider(unittest.TestCase):
 
     def test_parse_start(self):
         actual = self.spider.parse_start(self.start)
-        expected = {base: 'http://www.iana.org',
-                    directory: 'domains', path: 'domains/example/'}
+        expected = {'base': 'http://www.iana.org',
+                    'directory': 'domains', 'path': 'domains/example/'}
 
     def test_get_links(self):
-        actual = self.spider.get_site_links(self.start)
-        expected = [
-                 'http://www.iana.org/',
-                 'http://www.iana.org/domains/',
-                 'http://www.iana.org/numbers/',
-                 'http://www.iana.org/protocols/',
-                 'http://www.iana.org/about/',
-                 'http://www.iana.org/go/rfc2606',
-                 'http://www.iana.org/about/',
-                 'http://www.iana.org/about/presentations/',
-                 'http://www.iana.org/about/performance/',
-                 'http://www.iana.org/reports/',
-                 'http://www.iana.org/domains/',
-                 'http://www.iana.org/domains/root/',
-                 'http://www.iana.org/domains/int/',
-                 'http://www.iana.org/domains/arpa/',
-                 'http://www.iana.org/domains/idn-tables/',
-                 'http://www.iana.org/protocols/',
-                 'http://www.iana.org/numbers/',
-                 'http://www.iana.org/abuse/',
-                 'http://www.icann.org/',
-                 'mailto:iana@iana.org?subject=General%20website%20feedback'
-                 ]
+        actual = self.spider.get_links(self.html)
+        expected = set([
+            'http://www.example.com/test/test.pdf',
+            'http://www.icann.org/',
+            'https://www.iana.org/',
+            'https://www.iana.org/about/',
+            'https://www.iana.org/about/performance/',
+            'https://www.iana.org/about/presentations/',
+            'https://www.iana.org/abuse/',
+            'https://www.iana.org/domains/',
+            'https://www.iana.org/domains/arpa/',
+            'https://www.iana.org/domains/idn-tables/',
+            'https://www.iana.org/domains/int/',
+            'https://www.iana.org/domains/root/',
+            'https://www.iana.org/go/rfc2606',
+            'https://www.iana.org/numbers/',
+            'https://www.iana.org/protocols/',
+            'https://www.iana.org/reports/'
+             ])
 
     def get_pdfs(self):
-        pass
+        actual = self.spider.get_pdfs(address)
+        expected = set(['http://www.example.com/test/test.pdf'])
 
 
 if __name__ == '__main__':
