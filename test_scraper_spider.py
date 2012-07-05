@@ -23,7 +23,6 @@ class TestSpider(unittest.TestCase):
     def test_get_links(self):
         actual = self.spider.get_links(self.html)
         expected = set([
-            'http://www.example.com/test/test.pdf',
             'http://www.icann.org/',
             'https://www.iana.org/',
             'https://www.iana.org/about/',
