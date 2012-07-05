@@ -67,8 +67,15 @@ Base.metadata.create_all(engine)
 
 
 class Spider(object):
-    pass
+    def __init__(self, start)
+        self.start = start
 
+    def parse_start(self.start):
+        parsed = urlparse.urlparse(self.start)
+
+    def get_links(page):
+        [urlparse.urljoin(page, link.get('href')) 
+                for link in soup.find_all('a', href=re.compile(r'^(?!#)'))]
 
 def main():
     pass
