@@ -13,6 +13,7 @@ import os
 import re
 import csv
 import sys
+import pprint
 import logging
 import urlparse
 import lxml
@@ -67,29 +68,50 @@ Base.metadata.create_all(engine)
 
 
 class Spider(object):
-    def __init__(self, start, depth=None):
+    def __init__(self, start, depth=0, follow=False, blacklist=None):
         self.start = start
         self.depth = depth
+        self.follow = follow
+        self.blacklist = blacklist
+        self.parsed = urlparse.urlparse(self.start)
 
-    def parse_start(self):
-        parsed = urlparse.urlparse(self.start)
-        d = {}
-        d['base'] = '{0}://{1}'.format(parsed.scheme, parsed.netloc)
-        d['path'] = parsed.path
-        d['directory'] = parsed.path.split('/')[1]
-        return d
+    def get_links(self, soup):
+        # Normalizes relative and absolute urls when grabbing urls on page
+        return set([urlparse.urljoin(self.start, link.get('href')) 
+                    for link in soup.find_all('a', href=re.compile(
+                    r'^(?![(#)(mailto)(javascript)])'))])
 
-    def get_links(self, page):
-        return set([urlparse.urljoin(page, link.get('href'))
-                   for link in soup.find_all('a',
-                   href=re.compile(r'^(?![(#)(mailto)(javascript)])'))])
+    def get_pdfs(self, soup):
+        # Normalizes relative and absolute urls when grabbing pdfs on page
+        return set([urlparse.urljoin(self.start, link.get('href'))
+                    for link in soup.find_all('a', href=re.compile(
+                    '\.pdf'))])
 
-    def get_pdfs(self, address):
-        return set([urlparse.urljoin(start.base, link.get('href')) for
-                   link in soup.find_all('a', href=re.compile('\.pdf'))])
+    def save_pdfs(self):
+        pass
+
+    def save_broken_links(self):
+        pass
+
+    def black_list(self):
+        with open(self.blacklist) as f:
+            return [line.strip() for line in f.readlines()]
+
+    def crawl(self):
+        while True:
+            r = requests.get(self.start)
+            soup = BeautifulSoup(r.text)
+            links = self.get_links(soup)
+            pprint.pprint(links)
+            pdfs = self.get_pdfs(soup)
+            pprint.pprint(pdfs)
+            break
+
 
 def main():
-    pass
+    spider = Spider(start)
+    spider.crawl()
 
 if __name__ == '__main__':
+    start = 'http://exchanges.state.gov/heritage/index.html'
     main()
