@@ -7,6 +7,7 @@ from cscraper import Spider
 
 class TestSpider(unittest.TestCase):
     def setUp(self):
+        # Move this file to pdf-scraper dir
         with open('/Users/nathan/Desktop/example.html') as f:
                 self.html = f.read()
         self.start = 'http://www.iana.org/domains/example/'
@@ -16,9 +17,9 @@ class TestSpider(unittest.TestCase):
         pass
 
     def test_parse_start(self):
-        actual = self.spider.parse_start(self.start)
+        actual = self.spider.parse_start()
         expected = {'base': 'http://www.iana.org',
-                    'directory': 'domains', 'path': 'domains/example/'}
+                    'directory': 'domains', 'path': '/domains/example/'}
 
     def test_get_links(self):
         actual = self.spider.get_links(self.html)

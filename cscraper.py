@@ -71,12 +71,12 @@ class Spider(object):
         self.start = start
         self.depth = depth
 
-    def parse_start(self, start):
+    def parse_start(self):
         parsed = urlparse.urlparse(self.start)
         d = {}
         d['base'] = '{0}://{1}'.format(parsed.scheme, parsed.netloc)
         d['path'] = parsed.path
-        d['directory'] = parsed.path.split('/')[0]
+        d['directory'] = parsed.path.split('/')[1]
         return d
 
     def get_links(self, page):
