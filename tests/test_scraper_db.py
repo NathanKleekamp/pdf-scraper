@@ -5,7 +5,7 @@ import unittest
 
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
-from cscraper import Base, Pdf, Link
+from spider import Base, Pdf, Link
 
 
 Session = sessionmaker()
@@ -13,21 +13,24 @@ engine = create_engine('sqlite:///test.db')
 
 
 class TestScraperDb(unittest.TestCase):
+    """Test case for SQLAlchemy models"""
     def setUp(self):
+        """Set Up"""
         Base.metadata.create_all(engine)
         self.connection = engine.connect()
         self.trans = self.connection.begin()
         self.session = Session(bind=self.connection)
 
     def tearDown(self):
+        """Tear down"""
         self.trans.rollback()
         self.session.close()
         os.remove('test.db')
 
     def testAddPdf(self):
-        '''
+        """
         Tests pdf saved to db and that pdf/links relationship works.
-        '''
+        """
         pdf = Pdf('test1.pdf')
         pdf.links.append(Link('http://www.example.com/test/index.html'))
         pdf.links.append(Link('http://www.example.com/test/test.html'))
@@ -42,10 +45,16 @@ class TestScraperDb(unittest.TestCase):
                 actual.append(j.url)
         self.assertEqual(expected, actual)
 
+        # Seems like testAddPdf should be replaced with something like
+        # function that actually does something.
+    def test_save_pdfs(self):
+        """Tests that pdfs are being saved to db"""
+        actual = self.spider.save_pdf(get_pdfs(soup))
+
     def testAddLink(self):
-        '''
+        """
         Tests that visted/unvisited links are saved to db.
-        '''
+        """
         link = Link('http://www.example.com/test/index.html')
         self.session.add(link)
         link_visited = Link('http://www.example.com/test/test.html',

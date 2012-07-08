@@ -1,0 +1,39 @@
+from sqlalchemy import create_engine, Column, Integer, String, Boolean, \
+     ForeignKey
+from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.orm import sessionmaker, relationship, backref
+
+# Setting up the database and database classes
+Session = sessionmaker()
+engine = create_engine('sqlite:///database.db')
+Session.configure(bind=engine)
+session = Session()
+Base = declarative_base()
+
+
+def create_db():
+    Base.metadata.create_all(engine)
+
+
+class Link(Base):
+    '''List of urls for the spider'''
+    __tablename__ = 'links'
+    id = Column(Integer, primary_key=True)
+    url = Column(String, unique=True)
+    visited = Column(Boolean, default=False)
+    pdf_id = Column(Integer, ForeignKey('pdfs.id'))
+    pdf_url = relationship('Pdf', backref=backref('links', order_by=id))
+
+    def __init__(self, url, visited=False):
+        self.url = url
+        self.visited = visited
+
+
+class Pdf(Base):
+    '''The pdf files themselves'''
+    __tablename__ = 'pdfs'
+    id = Column(Integer, primary_key=True)
+    url = Column(String, unique=True)
+
+    def __init__(self, url):
+        self.url = url
