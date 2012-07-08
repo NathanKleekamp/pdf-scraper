@@ -7,5 +7,5 @@ By design, this script will not spider links offsite or the entirety
 of those sites. Future versions may support spidering whole sites.
 '''
 
-from .database import Link, Pdf, create_db, session
+from .database import Link, Pdf
 from .spider import Spider

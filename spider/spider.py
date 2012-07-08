@@ -32,7 +32,7 @@ class Spider(object):
                     for link in soup.find_all('a', href=re.compile(
                     '\.pdf'))])
 
-    def save_pdfs(self, get_pdfs):
+    def save_pdfs(self):
         pass
 
     def save_broken_links(self):
