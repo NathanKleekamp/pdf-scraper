@@ -1,14 +1,6 @@
-from sqlalchemy import create_engine, Column, Integer, String, Boolean, \
-     ForeignKey
-from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import sessionmaker, relationship, backref
-
-# Setting up the database and database classes
-Session = sessionmaker()
-engine = create_engine('sqlite:///database.db')
-Session.configure(bind=engine)
-session = Session()
-Base = declarative_base()
+from . import Base, engine
+from sqlalchemy import Column, Integer, String, Boolean, ForeignKey
+from sqlalchemy.orm import relationship, backref
 
 
 def create_db():

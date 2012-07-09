@@ -5,7 +5,9 @@ import lxml
 import requests
 
 from bs4 import BeautifulSoup
-from database import Link, Pdf
+from . import Link, Pdf, Session
+
+session = Session()
 
 # Setting up logging
 logging.basicConfig(filename='spider.log', filemode='w',
@@ -32,8 +34,10 @@ class Spider(object):
                     for link in soup.find_all('a', href=re.compile(
                     '\.pdf'))])
 
-    def save_pdfs(self):
-        pass
+    def save_pdf(self, pdf):
+        pdf = Pdf(pdf)
+        session.add(pdf)
+        session.commit()
 
     def save_broken_links(self):
         pass

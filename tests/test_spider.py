@@ -1,17 +1,16 @@
-#!/usr/bin/env python
-
-# sys path hack
-import sys
+# sys.path hack
 import os
-sys.path.insert(0, os.path.abspath('..'))
+import sys
+sys.path.insert(0, os.path.abspath('../'))
 
 import unittest
 import requests
 
 from bs4 import BeautifulSoup
 
-from spider import Spider, Pdf, Link
+from spider import Spider, Pdf, Link, Session
 
+session = Session()
 
 class TestSpider(unittest.TestCase):
     """Test case for the Spider clas"""
@@ -20,12 +19,8 @@ class TestSpider(unittest.TestCase):
         self.start = 'http://exchanges.state.gov/heritage/index.html'
         self.r = requests.get(self.start)
         self.spider = Spider(self.start, blacklist=(
-                                         os.path.abspath('../blacklist.txt')))
+                                         os.path.abspath('blacklist.txt')))
         self.soup = BeautifulSoup(self.r.text)
-
-    def tearDown(self):
-        """Tear down"""
-        pass
 
     def test_get_links(self):
         """Tests only links are being collected"""
@@ -99,12 +94,11 @@ class TestSpider(unittest.TestCase):
 
     def test_save_pdfs(self):
         """Tests that pdfs are being saved to db"""
-        #pdf = Pdf('test.pdf')
-        #session.add(pdf)
-        #session.commit()
-        #actual = session.query(Pdf).filter(Pdf.url==('test.pdf')).first()
-        #self.assertTrue('test.pdf' == actual)
-        pass
+        pdf = Pdf('test.pdf')
+        session.add(pdf)
+        session.commit()
+        actual = session.query(Pdf).filter(Pdf.url==('test.pdf')).first().url
+        self.assertTrue('test.pdf' == actual)
 
     def test_save_broken_links(self):
         """Tests broken links are saved to db"""
@@ -120,6 +114,11 @@ class TestSpider(unittest.TestCase):
     def test_crawl(self):
         """Tests the workhorse"""
         #actual = self.spider.crawl()
+        pass
+
+    def tearDown(self):
+        """Tear down"""
+        #os.remove('database.db')
         pass
 
 
