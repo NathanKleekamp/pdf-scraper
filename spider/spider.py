@@ -23,7 +23,6 @@ logging.basicConfig(filename='spider.log', filemode='w',
                     level=logging.INFO)
 
 
-# How do I get the spider_q back to the Spider class
 class GrabSoup(Thread):
     '''This class grabs the soup'''
     def __init__(self, url_q, spider_q):
@@ -35,21 +34,37 @@ class GrabSoup(Thread):
         while True:
             page = self.url_q.get()
             r = requests.get(page)
-            soup = BeautifulSoup(r.text)
+            soup = BeautifulSoup(r.text, 'lxml')
             self.spider_q.put(soup)
+            logging.info('Getting: {0}'.format(soup.title.contents[0]))
+            print('Getting: {0}'.format(soup.title.contents[0]))
             self.url_q.task_done()
 
 
 class DataWrite(Thread):
-    def __init__(self, db_q):
+    def __init__(self, db_q, page):
         Thread.__init__(self)
         self.db_q = db_q
+        self.page = page
 
     def run(self):
-        pass
+        while True:
+            pdf = self.db_q.get()
+            if not session.query(Pdf).filter(Pdf.url==pdf).first():
+                pdf = Pdf(pdf)
+                pdf.links.append(Link(self.page))
+                session.add(pdf)
+            else:
+                pdf = session.query(Pdf).filter(Pdf.url==pdf).first()
+                if self.page in [i.url for i in pdf.links]:
+                    pass
+                else:
+                    pdf.links.append(Link(self.page))
+                    session.add(pdf)
+            self.db_q.task_done()
 
 
-class Spider(object):
+class Spider(Thread):
     def __init__(self, start, depth=0, follow=False, blacklist=None):
         self.start = start
         self.depth = depth
@@ -57,6 +72,8 @@ class Spider(object):
         self.blacklist = blacklist
         self.parsed = urlparse.urlparse(self.start)
         self.soup = BeautifulSoup(requests.get(self.start).text, 'lxml')
+        self.spider_q = spider_q
+        self.db_q = db_q
 
     def get_links(self, soup):
         # Normalizes relative and absolute urls when grabbing urls on page
@@ -70,11 +87,6 @@ class Spider(object):
             if re.search('\.pdf', link):
                 pdfs.add(link)
         return pdfs
-
-    def save_pdf(self, pdf):
-        pdf = Pdf(pdf)
-        session.add(pdf)
-        session.commit()
 
     def save_broken_links(self):
         pass

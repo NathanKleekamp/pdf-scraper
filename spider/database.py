@@ -1,3 +1,5 @@
+import os
+
 from . import Base, engine
 from sqlalchemy import Column, Integer, String, Boolean, ForeignKey
 from sqlalchemy.orm import relationship, backref

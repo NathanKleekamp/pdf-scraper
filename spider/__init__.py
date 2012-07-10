@@ -7,17 +7,18 @@ By design, this script will not spider links offsite or the entirety
 of those sites. Future versions may support spidering whole sites.
 '''
 
+from creds import my_engine
 
 from sqlalchemy import create_engine
 from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy.orm import scoped_session, sessionmaker
 
 
 # Setting up the database and database classes
-engine = create_engine('sqlite:///database.db')
-Session = sessionmaker(bind=engine)
+engine = create_engine(my_engine)
+Session = scoped_session(sessionmaker(bind=engine))
 Base = declarative_base()
 
 
 from .database import Link, Pdf
-from .spider import Spider, GrabSoup
+from .spider import Spider, GrabSoup, DataWrite

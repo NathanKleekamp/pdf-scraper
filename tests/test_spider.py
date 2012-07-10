@@ -6,9 +6,10 @@ sys.path.insert(0, os.path.abspath('../'))
 import unittest
 import requests
 
+from Queue import Queue
 from bs4 import BeautifulSoup
 
-from spider import Spider, Pdf, Link, Session
+from spider import Spider, Pdf, Link, GrabSoup, DataWrite, Session
 
 session = Session()
 
@@ -92,14 +93,6 @@ class TestSpider(unittest.TestCase):
                                                      'pdfs/unesco01.pdf')])
         self.assertEqual(actual, expected)
 
-    def test_save_pdfs(self):
-        """Tests that pdfs are being saved to db"""
-        pdf = Pdf('test.pdf')
-        session.add(pdf)
-        session.commit()
-        actual = session.query(Pdf).filter(Pdf.url==('test.pdf')).first().url
-        self.assertTrue('test.pdf' == actual)
-
     def test_save_broken_links(self):
         """Tests broken links are saved to db"""
         pass
@@ -122,15 +115,80 @@ class TestSpider(unittest.TestCase):
         pass
 
 
-class GrabSoup(unittest.TestCase):
+class TestGrabSoup(unittest.TestCase):
     def setUp(self):
         '''Sets up tests'''
-        pass
+        self.pages = ['http://exchanges.state.gov/heritage/index.html',
+                      'http://exchanges.state.gov/heritage/culprop.html',
+                      'http://exchanges.state.gov/heritage/special.html']
+        self.url_q = Queue()
+        self.spider_q = Queue()
+
+    def test_grab_soup(self):
+        for i in range(3):
+            gs = GrabSoup(self.url_q, self.spider_q)
+            gs.setDaemon(True)
+            gs.start()
+        for page in self.pages:
+            self.url_q.put(page)
+        self.url_q.join()
+        actual = [i.title.contents[0] for i in self.spider_q.queue]
+        expected = [u'Cultural Heritage Center',
+                    u'International Cultural Property Protection',
+                    u'Special Projects']
+        for i in expected:
+            self.assertTrue(i in actual)
 
     def tearDown(self):
         '''Removes everything after tests'''
         pass
 
+
+class TestDataWrite(unittest.TestCase):
+    def setUp(self):
+        self.pdfs = ['test1.pdf', 'test2.pdf']
+        self.page = 'http://exchanges.state.gov/heritage/index.html'
+        self.db_q = Queue()
+
+    def test_save_pdfs(self):
+        """Tests that pdfs are being saved to db"""
+        pdf = Pdf('test.pdf')
+        session.add(pdf)
+        session.commit()
+        actual = session.query(Pdf).filter(Pdf.url==('test.pdf')).first().url
+        self.assertTrue('test.pdf' == actual)
+
+    def test_append_page(self):
+        pass
+
+    def test_threaded_write(self):
+        for i in range(2):
+            dw = DataWrite(self.db_q, self.page)
+            dw.setDaemon(True)
+            dw.start()
+        for pdf in self.pdfs:
+            self.db_q.put(pdf)
+        self.db_q.join()
+        session.commit()
+        actual = [i.url for i in session.query(Pdf).all()]
+        expected = ['test1.pdf', 'test2.pdf']
+        for i in expected:
+            self.assertTrue(i in actual)
+
+    '''def test_threaded_append(self):
+        for i in range(2):
+            dw = DataWrite(self.db_q, self.page)
+            dw.setDaemon(True)
+            dw.start()
+        for pdf in self.pdfs:
+            self.db_q.put(pdf)
+        self.db_q.join()
+        session.commit()
+        actual = []
+        exptected = []'''
+
+    def tearDown(self):
+        pass
 
 if __name__ == '__main__':
     unittest.main()
