@@ -20,5 +20,4 @@ Base = declarative_base()
 
 
 from .database import Link, Pdf
-from .spider import Spider
-#from tests.test_spider import TestSpider
+from .spider import Spider, GrabSoup

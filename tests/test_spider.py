@@ -122,5 +122,15 @@ class TestSpider(unittest.TestCase):
         pass
 
 
+class GrabSoup(unittest.TestCase):
+    def setUp(self):
+        '''Sets up tests'''
+        pass
+
+    def tearDown(self):
+        '''Removes everything after tests'''
+        pass
+
+
 if __name__ == '__main__':
     unittest.main()
