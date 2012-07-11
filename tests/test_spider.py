@@ -111,7 +111,6 @@ class TestSpider(unittest.TestCase):
 
     def tearDown(self):
         """Tear down"""
-        #os.remove('database.db')
         pass
 
 
@@ -158,10 +157,7 @@ class TestDataWrite(unittest.TestCase):
         actual = session.query(Pdf).filter(Pdf.url==('test.pdf')).first().url
         self.assertTrue('test.pdf' == actual)
 
-    def test_append_page(self):
-        pass
-
-    def test_threaded_write(self):
+    def test_a_threaded_write(self):
         for i in range(2):
             dw = DataWrite(self.db_q, self.page)
             dw.setDaemon(True)
@@ -175,20 +171,23 @@ class TestDataWrite(unittest.TestCase):
         for i in expected:
             self.assertTrue(i in actual)
 
-    '''def test_threaded_append(self):
-        for i in range(2):
-            dw = DataWrite(self.db_q, self.page)
-            dw.setDaemon(True)
-            dw.start()
-        for pdf in self.pdfs:
-            self.db_q.put(pdf)
-        self.db_q.join()
-        session.commit()
-        actual = []
-        exptected = []'''
+    def test_b_link_append(self):
+        actual = {}
+        pdfs = session.query(Pdf).join(Link).all()
+        for pdf in pdfs:
+            actual[pdf.url] = [i.url for i in pdf.links]
+        test2 = session.query(Pdf).filter(Pdf.url=='test2.pdf').first()
+        test2.links.append(Link(
+                            u'http://exchanges.state.gov/heritage/iraq.html'))
+        expected = {
+            u'test1.pdf': [u'http://exchanges.state.gov/heritage/index.html'],
+            u'test2.pdf': [u'http://exchanges.state.gov/heritage/index.html',
+                          u'http://exchanges.state.gov/heritage/iraq.html']
+            }
+        self.assertEqual(actual, expected)
 
     def tearDown(self):
-        pass
+        session.close()
 
 if __name__ == '__main__':
     unittest.main()

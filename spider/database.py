@@ -13,8 +13,7 @@ class Link(Base):
     '''List of urls for the spider'''
     __tablename__ = 'links'
     id = Column(Integer, primary_key=True)
-    url = Column(String, unique=True)
-    visited = Column(Boolean, default=False)
+    url = Column(String)
     pdf_id = Column(Integer, ForeignKey('pdfs.id'))
     pdf_url = relationship('Pdf', backref=backref('links', order_by=id))
 
