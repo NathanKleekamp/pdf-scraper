@@ -17,14 +17,30 @@ class TestSpider(unittest.TestCase):
     """Test case for the Spider clas"""
     def setUp(self):
         """Set up"""
-        self.start = 'http://exchanges.state.gov/heritage/index.html'
-        self.r = requests.get(self.start)
-        self.spider = Spider(self.start, blacklist=(
-                                         os.path.abspath('blacklist.txt')))
-        self.soup = BeautifulSoup(self.r.text)
+        self.spider_q = Queue()
+        self.db_q = Queue()
+        self.url_q = Queue()
+        for i in range(5):
+            self.spider = Spider(self.spider_q, self.db_q, self.url_q,
+                          self.start, blacklist=(os.path.abspath(
+                          'blacklist.txt')))
+            self.spider.setDaemon(True)
+            self.spider.start()
+        self.pages = ['http://exchanges.state.gov/heritage/index.html',
+                      'http://exchanges.state.gov/heritage/iraq.html',
+                      'http://exchanges.state.gov/heritage/special.html',
+                      'http://exchanges.state.gov/heritage/culprop.html',
+                      'http://exchanges.state.gov/heritage/afcp.html']
+        self.start = pages[0]
+        self.soups = [BeautifulSoup(requests.get(page).text) for page in
+                      self.pages]
+        for soup in self.soups:
+            self.spider_q.get(soup)
+        self.spider_q.join()
+        self.soup = soups[0]
 
     def test_get_links(self):
-        """Tests only links are being collected"""
+        """Tests only links to web pages are being collected"""
         actual = self.spider.get_links(self.soup)
         expected = set([
             'http://exchanges.state.gov/scho-pro.html',
@@ -93,10 +109,6 @@ class TestSpider(unittest.TestCase):
                                                      'pdfs/unesco01.pdf')])
         self.assertEqual(actual, expected)
 
-    def test_save_broken_links(self):
-        """Tests broken links are saved to db"""
-        pass
-
     def test_black_list(self):
         """Tests black list is being pulled in"""
         actual = self.spider.black_list()
@@ -104,13 +116,8 @@ class TestSpider(unittest.TestCase):
                     'http://exchanges.state.gov/heritage/special.html']
         self.assertEqual(actual, expected)
 
-    def test_crawl(self):
-        """Tests the workhorse"""
-        #actual = self.spider.crawl()
-        pass
-
-    def test_threaded_processing(self):
-        pass
+    def test_threaded_processing_pdfs(self):
+        actual = []
 
     def tearDown(self):
         """Tear down"""

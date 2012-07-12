@@ -68,21 +68,16 @@ class DataWrite(Thread):
 
 
 class Spider(Thread):
-    def __init__(self, start, depth=0, follow=False, blacklist=None):
+    def __init__(self, spider_q, db_q, url_q, start, depth=0, follow=False,
+                 blacklist=None):
+        Thread.__init__(self)
         self.start = start
         self.depth = depth
         self.follow = follow
         self.blacklist = blacklist
-        self.parsed = urlparse.urlparse(self.start)
-        self.soup = BeautifulSoup(requests.get(self.start).text, 'lxml')
         self.url_q = url_q
         self.spider_q = spider_q
         self.db_q = db_q
-
-    #def run(self):
-        #while True
-        #    soup = self.spider_q.get()
-
 
     def get_links(self, soup):
         # Normalizes relative and absolute urls when grabbing urls on page
@@ -90,20 +85,33 @@ class Spider(Thread):
                     for link in soup.find_all('a', href=re.compile(
                     r'^(?![(#)(mailto)(javascript)])'))])
 
-    def get_pdfs(self, soup):
+    def get_pdfs(self, links):
         pdfs = set()
-        for link in self.get_links(soup):
+        for link in links:
             if re.search('\.pdf', link):
                 pdfs.add(link)
         return pdfs
-
-    def save_broken_links(self):
-        pass
 
     def black_list(self):
         if self.blacklist:
             with open(self.blacklist) as f:
                 return [line.strip() for line in f.readlines()]
 
-    def crawl(self):
-        pass
+    def run(self):
+        while True:
+            soup = self.spider_q.get()
+            links = self.get_links(soup)
+            pdfs = self.get_pdfs(links)
+            for pdf in pdfs:
+                logging.info('Adding {0} to db_q'.format(pdf))
+                self.db_q.put(pdf)
+            for link in links:
+                if link in self.black_list():
+                    pass
+                else:
+                    logging.info('Adding {0} to url_q'.format())
+                    self.url_q.put(pdf)
+            self.spider_q.task_done()
+
+def main():
+    pass
