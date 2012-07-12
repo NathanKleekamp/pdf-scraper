@@ -109,6 +109,9 @@ class TestSpider(unittest.TestCase):
         #actual = self.spider.crawl()
         pass
 
+    def test_threaded_processing(self):
+        pass
+
     def tearDown(self):
         """Tear down"""
         pass
@@ -122,12 +125,12 @@ class TestGrabSoup(unittest.TestCase):
                       'http://exchanges.state.gov/heritage/special.html']
         self.url_q = Queue()
         self.spider_q = Queue()
-
-    def test_grab_soup(self):
         for i in range(3):
             gs = GrabSoup(self.url_q, self.spider_q)
             gs.setDaemon(True)
             gs.start()
+
+    def test_grab_soup(self):
         for page in self.pages:
             self.url_q.put(page)
         self.url_q.join()
@@ -145,23 +148,17 @@ class TestGrabSoup(unittest.TestCase):
 
 class TestDataWrite(unittest.TestCase):
     def setUp(self):
+        '''Sets up tests'''
         self.pdfs = ['test1.pdf', 'test2.pdf']
         self.page = 'http://exchanges.state.gov/heritage/index.html'
         self.db_q = Queue()
-
-    def test_save_pdfs(self):
-        """Tests that pdfs are being saved to db"""
-        pdf = Pdf('test.pdf')
-        session.add(pdf)
-        session.commit()
-        actual = session.query(Pdf).filter(Pdf.url==('test.pdf')).first().url
-        self.assertTrue('test.pdf' == actual)
-
-    def test_a_threaded_write(self):
         for i in range(2):
             dw = DataWrite(self.db_q, self.page)
             dw.setDaemon(True)
             dw.start()
+
+    def test_a_threaded_write(self):
+        "Tests writes in threads"
         for pdf in self.pdfs:
             self.db_q.put(pdf)
         self.db_q.join()
@@ -171,14 +168,16 @@ class TestDataWrite(unittest.TestCase):
         for i in expected:
             self.assertTrue(i in actual)
 
+# I dont' think this is a legitimate test of the functionality
     def test_b_link_append(self):
+        "Tests that links are successfully appended to pdfs"
         actual = {}
-        pdfs = session.query(Pdf).join(Link).all()
-        for pdf in pdfs:
-            actual[pdf.url] = [i.url for i in pdf.links]
         test2 = session.query(Pdf).filter(Pdf.url=='test2.pdf').first()
         test2.links.append(Link(
                             u'http://exchanges.state.gov/heritage/iraq.html'))
+        pdfs = session.query(Pdf).join(Link).all()
+        for pdf in pdfs:
+            actual[pdf.url] = [i.url for i in pdf.links]
         expected = {
             u'test1.pdf': [u'http://exchanges.state.gov/heritage/index.html'],
             u'test2.pdf': [u'http://exchanges.state.gov/heritage/index.html',

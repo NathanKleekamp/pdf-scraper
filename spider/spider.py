@@ -53,6 +53,8 @@ class DataWrite(Thread):
             if not session.query(Pdf).filter(Pdf.url==pdf).first():
                 pdf = Pdf(pdf)
                 pdf.links.append(Link(self.page))
+                logging.info('Adding {0}'.format(pdf))
+                print('Adding {0}'.format(pdf))
                 session.add(pdf)
             else:
                 pdf = session.query(Pdf).filter(Pdf.url==pdf).first()
@@ -60,6 +62,7 @@ class DataWrite(Thread):
                     pass
                 else:
                     pdf.links.append(Link(self.page))
+                    logging.info('Adding {0} to {1}'.format(self.page, pdf))
                     session.add(pdf)
             self.db_q.task_done()
 
@@ -72,8 +75,14 @@ class Spider(Thread):
         self.blacklist = blacklist
         self.parsed = urlparse.urlparse(self.start)
         self.soup = BeautifulSoup(requests.get(self.start).text, 'lxml')
+        self.url_q = url_q
         self.spider_q = spider_q
         self.db_q = db_q
+
+    #def run(self):
+        #while True
+        #    soup = self.spider_q.get()
+
 
     def get_links(self, soup):
         # Normalizes relative and absolute urls when grabbing urls on page
@@ -97,9 +106,4 @@ class Spider(Thread):
                 return [line.strip() for line in f.readlines()]
 
     def crawl(self):
-        r = requests.get(self.start)
-        while True:
-            soup = BeautifulSoup(r.text)
-            links = self.get_links(soup)
-            pdfs = self.get_pdfs(soup)
-            break
+        pass
